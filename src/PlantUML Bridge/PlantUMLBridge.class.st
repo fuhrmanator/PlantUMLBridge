@@ -17,6 +17,19 @@ Class {
 	#category : #'PlantUML Bridge'
 }
 
+{ #category : #examples }
+PlantUMLBridge class >> example [
+	<example>
+	(self loadUML:
+'@startuml
+title Thursday night
+start
+:Eat Hot Wings;
+:Drink Homebrew;
+stop
+@enduml') inspect
+]
+
 { #category : #public }
 PlantUMLBridge class >> loadUML: source [
 	| url |
