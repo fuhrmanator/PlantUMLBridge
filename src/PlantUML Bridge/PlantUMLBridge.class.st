@@ -20,7 +20,7 @@ Class {
 { #category : #examples }
 PlantUMLBridge class >> example [
 	<example>
-	(self loadUML:
+	(self imageFromUML:
 '@startuml
 title Thursday night
 start
@@ -30,16 +30,41 @@ stop
 @enduml') inspect
 ]
 
+{ #category : #examples }
+PlantUMLBridge class >> exampleOpenInBrowser [
+	<example>
+	(self webbrowseUML:
+'@startuml
+title Thursday night
+start
+:Eat Hot Wings;
+:Drink Homebrew;
+stop
+@enduml')
+]
+
 { #category : #public }
-PlantUMLBridge class >> loadUML: source [
+PlantUMLBridge class >> imageFromUML: source [
 	| url |
-	url := self urlFromSource: source.
+	url := self pngFromSource: source.
 	^ZnEasy getPng: url
 ]
 
 { #category : #public }
-PlantUMLBridge class >> urlFromSource: source [
-	^'https://www.plantuml.com/plantuml/img/' , (self new umlFromSource: source) 
+PlantUMLBridge class >> pngFromSource: source [
+	^'https://www.plantuml.com/plantuml/img/' , (self new urlFromSource: source) 
+]
+
+{ #category : #public }
+PlantUMLBridge class >> svgFromSource: source [
+	^'https://www.plantuml.com/plantuml/svg/' , (self new urlFromSource: source) 
+]
+
+{ #category : #public }
+PlantUMLBridge class >> webbrowseUML: source [
+	| url |
+	url := self svgFromSource: source.
+	^WebBrowser openOn: url.
 ]
 
 { #category : #plantUMLencoding }
@@ -122,7 +147,7 @@ PlantUMLBridge >> pkzipped: aString [
 ]
 
 { #category : #plantUMLencoding }
-PlantUMLBridge >> umlFromSource: aSource [
+PlantUMLBridge >> urlFromSource: aSource [
 	"Ported from https://github.com/dougn/python-plantuml/blob/master/plantuml.py"
 
 	| zlibbedStr compressedString |
