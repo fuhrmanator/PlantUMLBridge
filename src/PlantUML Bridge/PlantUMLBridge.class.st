@@ -151,7 +151,7 @@ PlantUMLBridge >> urlFromSource: aSource [
 	"Ported from https://github.com/dougn/python-plantuml/blob/master/plantuml.py"
 
 	| zlibbedStr compressedString |
-	zlibbedStr := self pkzipped: aSource convertToSystemString.
+	zlibbedStr := self pkzipped: aSource.
 	compressedString := zlibbedStr copyFrom: 3 to: zlibbedStr size - 4.
 	^ self encode: compressedString
 ]
