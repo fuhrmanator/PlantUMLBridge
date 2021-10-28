@@ -67,6 +67,85 @@ PlantUMLBridge class >> webbrowseUML: source [
 	^WebBrowser openOn: url.
 ]
 
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> _decode64: aString [
+	"Taken from PlantUML Gizmo code (in Javascript)"
+	| i c1 c2 c3 c4 ss |
+	i := 0.
+	ss := WriteStream on: (String new).
+	[ i < aString size ]
+		whileTrue: [
+			c1 := self _decode6bit: (aString at: i+1). "var c1 = decode6bit(data.substring(i,i+1));"
+			c2 := self _decode6bit: (aString at: i+2). "var c2 = decode6bit(data.substring(i+1,i+2));"
+			c3 := self _decode6bit: (aString at: i+3). "var c3 = decode6bit(data.substring(i+2,i+3));"
+			c4 := self _decode6bit: (aString at: i+4). "var c4 = decode6bit(data.substring(i+3,i+4));"
+			ss nextPutAll: (Character value: ((c1 << 2) | (c2 >> 4))) asString. "ss += String.fromCharCode((c1 << 2) | (c2 >> 4));"
+			ss nextPutAll: (Character value: (((c2 & 16r0F) << 4) | (c3 >> 2))) asString. "ss += String.fromCharCode(((c2 & 0x0F) << 4) | (c3 >> 2));"
+			ss nextPutAll: (Character value: (((c3 & 16r3) << 6) | c4)) asString. "ss += String.fromCharCode(((c3 & 0x3) << 6) | c4);"
+			i := i + 4 ].
+	^ ss contents
+]
+
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> _decode6bit: aCharacter [
+	"Ported from PlantUML Gizmo's Javascript"
+
+	(aCharacter between: $0 and: $9)
+		ifTrue: [ ^ aCharacter asInteger - 48 ].
+	(aCharacter between: $A and: $Z)
+		ifTrue: [ ^ aCharacter asInteger - 65 + 10 ].
+	(aCharacter between: $a and: $z)
+		ifTrue: [ ^ aCharacter asInteger - 97 + 36 ].
+	aCharacter = $-
+		ifTrue: [ ^ 62 ].
+	aCharacter = $_
+		ifTrue: [ ^ 63 ].
+	^ 0
+
+	"function decode6bit(c) {
+		if (c>='0' && c<='9') return c.charCodeAt(0)-48;
+		if (c>='A' && c<='Z') return c.charCodeAt(0)-65+10;
+		if (c>='a' && c<='z') return c.charCodeAt(0)-97+36;
+		if (c=='-') return 62;
+		if (c=='_') return 63;
+		return 0;
+	}"
+]
+
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> _decodeURIComponent: aString [
+	"Like javascript's encodeURIComponent function"
+
+	^ ZnResourceMetaUtils decodePercent: aString
+]
+
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> _escape: aString [
+	"Like javascript's escape (encodeURI) function"
+
+	^ ZnResourceMetaUtils
+		encodePercent: aString
+		safeSet: #rfc3986SafeSet
+		encoder: ZnCharacterEncoder utf8
+]
+
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> _magicCodeFromURL: aUrl [
+	"pull out the magic code from the URL"
+	^ '(.png|.jpg)' asRegex copy: ('http.+/' asRegexIgnoringCase copy: aUrl replacingMatchesWith: '') replacingMatchesWith: ''
+		
+		
+
+	"
+		^ (aUrl copyWithRegex: 'http.+/' matchesIgnoringCaseReplacedWith: '')
+		copyWithRegex: '(.png|.jpg)'
+		matchesIgnoringCaseReplacedWith: ''
+
+	
+	rxString asRegexIgnoringCase 
+		copy: self replacingMatchesWith: aString"
+]
+
 { #category : #plantUMLencoding }
 PlantUMLBridge >> encode6bit: bCopy [
 	"Ported from https://github.com/dougn/python-plantuml/blob/master/plantuml.py"
@@ -132,6 +211,18 @@ PlantUMLBridge >> on: aString encode3bytes: b1 arg2: b2 arg3: b3 [
 	^ res contents	"return res;"
 ]
 
+{ #category : #'as yet unclassified' }
+PlantUMLBridge >> pkunzip: aString [
+	"Use the ZLibReadStream to get a DEFLATE function from PKTools"
+
+	"| magic1 magic2 |
+	magic1 := (self at: 1) asInteger.
+	magic2 := (self at: 2) asInteger.
+	(magic1 = 16r1F and: [ magic2 = 16r8B ])
+		ifFalse: [ ^ self ]."
+	^ (ZipReadStream on: aString) upToEnd
+]
+
 { #category : #plantUMLencoding }
 PlantUMLBridge >> pkzipped: aString [
 	"Use the ZLibWriteStream to get a DEFLATE function from PKTools"
@@ -147,11 +238,20 @@ PlantUMLBridge >> pkzipped: aString [
 ]
 
 { #category : #plantUMLencoding }
+PlantUMLBridge >> sourceFromUrl: aUrl [
+	| decoded inflated escaped |
+	decoded := self _decode64: (self _magicCodeFromURL: aUrl).
+	inflated := self pkunzip: decoded.
+	escaped := self _escape: inflated.
+	^ (ZnUTF8Encoder new decodeBytes: (self _decodeURIComponent: escaped) asByteArray ) "convertFromSystemString"
+]
+
+{ #category : #plantUMLencoding }
 PlantUMLBridge >> urlFromSource: aSource [
 	"Ported from https://github.com/dougn/python-plantuml/blob/master/plantuml.py"
 
 	| zlibbedStr compressedString |
-	zlibbedStr := self pkzipped: aSource.
+	zlibbedStr := self pkzipped: (aSource asUTF8Bytes asString).
 	compressedString := zlibbedStr copyFrom: 3 to: zlibbedStr size - 4.
 	^ self encode: compressedString
 ]
