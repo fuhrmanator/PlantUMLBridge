@@ -11,5 +11,5 @@ BaselineOfPlantUMLBridge >> baseline: spec [
 	spec for: #common do: [ 
 		spec
 			package: 'PlantUML Bridge';
-			package: 'PlantUML Bridge-Tests' with: [ spec requires: #( 'PlantUML Bridge' ) ] ]
+			package: 'PlantUML Bridge-Tests' with: [ spec requires: #( 'PlantUMLBridge' ) ] ]
 ]
